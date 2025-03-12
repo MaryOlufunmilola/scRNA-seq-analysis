@@ -17,13 +17,16 @@ This project implements a pipeline for analyzing single-cell RNA sequencing (scR
 ## Usage
 
 1. Clone this repository:
-    git clone https://github.com/MaryOlufunmilola/scRNA-seq-analysis.git
-    cd single-cell-rna-seq-analysis
-2. Install the required dependencies: pip install -r requirements.txt
+- git clone https://github.com/MaryOlufunmilola/scRNA-seq-analysis.git
+- cd single-cell-rna-seq-analysis
+2. Install the required dependencies:
+- pip install -r requirements.txt
 
 3. Download the dataset:
 - Dataset: [Link to dataset](https://example.com/dataset)
 
-4. Run the preprocessing script: python scripts/preprocess.py
+4. Run the preprocessing script: 
+- python scripts/preprocess.py
 
-5. Train the machine learning model: python scripts/machine_learning.py
+5. Train the machine learning model:
+- python scripts/machine_learning.py
