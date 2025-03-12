@@ -1,0 +1,35 @@
+# General dependencies
+pandas==1.5.3
+numpy==1.24.2
+scikit-learn==1.1.2
+matplotlib==3.6.3
+seaborn==0.11.2
+
+# Single-cell RNA-Seq analysis (Scanpy)
+scanpy==1.9.3
+
+# Machine learning frameworks
+tensorflow==2.11.0
+pytorch==1.12.1
+torchvision==0.13.1
+
+# Jupyter Notebooks (optional, if you are using notebooks)
+jupyterlab==3.5.1
+
+# For UMAP (clustering and visualization)
+umap-learn==0.5.3
+
+# For clustering algorithms (e.g., KMeans)
+hdbscan==0.8.29
+
+# For working with h5 files (if using h5py for storing models or data)
+h5py==3.7.0
+
+# For handling large datasets (if applicable)
+dask==2022.2.0
+
+# For RNA-Seq data preprocessing (optional for transcriptomic analysis)
+rpy2==3.5.6
+
+# If using scanpy's internal dependencies for single-cell visualization
+pytorch-lightning==1.7.7
