@@ -17,7 +17,7 @@ This project implements a pipeline for analyzing single-cell RNA sequencing (scR
 ## Usage
 
 1. Clone this repository:
-    git clone https://github.com/yourusername/single-cell-rna-seq-analysis.git
+    git clone https://github.com/MaryOlufunmilola/scRNA-seq-analysis.git
     cd single-cell-rna-seq-analysis
 2. Install the required dependencies: pip install -r requirements.txt
 
