@@ -1,3 +1,4 @@
+# This script handles the preprocessing and normalization of single-cell RNA-Seq data. It includes filtering genes, normalizing the data, and identifying variable genes.
 import scanpy as sc
 import pandas as pd
 import numpy as np
