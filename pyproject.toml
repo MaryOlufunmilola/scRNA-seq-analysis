@@ -4,7 +4,7 @@ target-version = "py310"
 
 [tool.ruff.lint]
 # Start with a focused, high-signal rule set rather than every possible
-# check -- catches real bugs (unused imports, undefined names) without
+# check, catches real bugs (unused imports, undefined names) without
 # drowning CI output in style nitpicks on day one.
 select = ["E", "F", "W"]
 ignore = [
