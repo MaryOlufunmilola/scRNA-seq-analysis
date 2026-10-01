@@ -32,9 +32,7 @@ RAW_DIR = os.path.join(DATA_DIR, "GSE203612_raw")
 GEO_TAR_URL = "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE203nnn/GSE203612/suppl/GSE203612_RAW.tar"
 GEO_TAR_PATH = os.path.join(DATA_DIR, "GSE203612_RAW.tar")
 
-# SHA-256 of the GEO archive these results were produced with. None = not
-# pinned yet: the first run prints the digest; paste it here to make later
-# runs fail loudly if GEO's file ever changes.
+# SHA-256 of the GEO archive these results were produced with. 
 GEO_TAR_SHA256 = "5178ae0bea3f2d95f7155aaba149a7e332499cc166b0d6c0f9e913f3a4db3a4d"
 
 UCEC_GSM_IDS = {
@@ -416,10 +414,9 @@ def main():
     parser = argparse.ArgumentParser(description="Load, QC filter, and preprocess GSE203612 data.")
     parser.add_argument("--min-genes", type=int, default=100,
                          help="Minimum genes detected per cell (default 100: above the empty-droplet peaks "
-                              "in the per-library log-scale histograms; 200 would cut into NYU_UCEC3's main "
-                              "population -- see the README's QC section).")
+                              "in the per-library log-scale histograms).")
     parser.add_argument("--max-genes", type=int, default=6000,
-                         help="Maximum genes detected per cell -- an unusually high count is a doublet signal (default 6000).")
+                         help="Maximum genes detected per cell, an unusually high count is a doublet signal (default 6000).")
     parser.add_argument("--max-pct-mt", type=float, default=15,
                          help="Maximum mitochondrial %% per cell (default 15; check results/figures/qc_before_after.png "
                               "to judge whether a tighter bound like 10 is appropriate for this data).")
@@ -432,7 +429,7 @@ def main():
                               "run) differs substantially from the shared default.")
     parser.add_argument("--keep-predicted-doublets", action="store_true",
                          help="Keep cells Scrublet flags as likely doublets (still labeled via "
-                              "predicted_doublet/doublet_score columns) instead of removing them -- "
+                              "predicted_doublet/doublet_score columns) instead of removing them. "
                               "Scrublet's call is a probabilistic estimate, not a definitive label; "
                               "use this to treat it as soft evidence downstream instead.")
     args = parser.parse_args()
