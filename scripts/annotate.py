@@ -4,8 +4,7 @@ Cell-type annotation for endometrial tumor tissue.
 Primary method: a marker-gene panel. Each marker's per-cluster mean (all genes,
 adata.raw) is z-scored across clusters; a type's score is the mean z-score of its
 markers. A cluster is "Ambiguous" when the best score is not positive or is within
-min_margin of the runner-up. T/NK and fibroblast/pericyte are merged ("unresolved")
-because the markers could not separate them reliably.
+min_margin of the runner-up. 
 
 CellTypist (immune-only models) is a consistency check on immune clusters only.
 """
@@ -63,8 +62,7 @@ MARKER_GENES = {
     "PECAM1": "Endothelial cell",
     "VWF": "Endothelial cell",
     "CDH5": "Endothelial cell",
-    # T (CD3D, CD2) and NK (GNLY, NKG7) markers, merged: cytotoxic T and NK cells
-    # share killing machinery and no stable split was found.
+    # T (CD3D, CD2) and NK (GNLY, NKG7) markers, merged
     "CD3D": "T/NK cell",
     "CD2": "T/NK cell",
     "GNLY": "T/NK cell",
@@ -88,8 +86,7 @@ MARKER_GENES = {
     # Neutrophil
     "FCGR3B": "Neutrophil",
     "CSF3R": "Neutrophil",
-    "S100A8": "Neutrophil",
-    # FCGR3A is deliberately unused: it marks both NK cells and non-classical monocytes.
+    "S100A8": "Neutrophil"
 }
 
 T_NK_LABEL = "T/NK cell"
@@ -238,13 +235,13 @@ def cross_check_immune_cells(adata, immune_labels=None):
     if len(disagreements) > 0:
         print(
             f"\n{len(disagreements)} cluster(s) show a GENUINE disagreement (not just subtype "
-            f"granularity or wording) -- this is a PROMPT for marker-level review, not evidence "
+            f"granularity or wording). This is a PROMPT for marker-level review, not evidence "
             f"either method is simply wrong. For each, check:"
         )
         for cluster in disagreements.index:
             print(
                 f"  Cluster {cluster}: CellTypist='{disagreements.loc[cluster, 'majority_voting']}', "
-                f"marker panel='{disagreements.loc[cluster, 'marker_gene_label']}' -- review "
+                f"marker panel='{disagreements.loc[cluster, 'marker_gene_label']}' "
                 f"results/figures/dotplot_cluster_diagnostic.png (cluster {cluster} column) and "
                 f"results/marker_annotation_confidence.csv (cluster {cluster} row) before trusting either call."
             )
@@ -307,8 +304,7 @@ def record_marker_panel_coverage(available_genes):
 
 def marker_gene_annotation(adata, min_margin=MIN_MARGIN_DEFAULT):
     """
-    Assign a cell type per Leiden cluster from the marker panel (see the
-    module docstring for the scoring rule).
+    Assign a cell type per Leiden cluster from the marker panel.
 
     Returns (adata, cluster_level_gene_scale_stats). The scale statistics
     are computed from cluster means and must not be reused to z-score
@@ -452,9 +448,9 @@ def compute_cluster_concordance(adata, marker_gene_list, min_margin=MIN_MARGIN_D
     """
     Score each cell individually with the same rule used for clusters, and
     report per cluster the fraction of cells that are:
-      concordant        -- the cell's own label matches the cluster label
-      ambiguous_cell    -- the cell itself scores Ambiguous
-      discordant_other  -- the cell scores a different specific type
+      concordant        : the cell's own label matches the cluster label
+      ambiguous_cell    : the cell itself scores Ambiguous
+      discordant_other  : the cell scores a different specific type
     A low concordant fraction marks a cluster that may mix populations.
     """
     raw_subset, available_genes, _ = _get_marker_raw_subset(adata, marker_gene_list)
@@ -685,7 +681,7 @@ def main():
 
     # cell_type is the marker-panel label, except that doublet-enriched
     # clusters get DOUBLET_LABEL. Nothing is removed here; downstream scripts
-    # exclude Ambiguous, Unknown, and doublet labels (see labels.py).
+    # exclude Ambiguous, Unknown, and doublet labels.
     _figures_dir()
     adata.obs["cell_type"] = apply_doublet_label(adata.obs["marker_gene_label"], adata.obs["leiden_clusters"],
                                                  doublet_table)
