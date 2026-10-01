@@ -98,4 +98,4 @@ types and form specific interactions with the tumor microenvironment."
 
 ## License
 
-MIT -- see `LICENSE`.
+MIT see `LICENSE`.
