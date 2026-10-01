@@ -16,8 +16,6 @@ signature-matrix export and cell-cell communication.
 > build and test the pipeline and map these tumors' cell populations, not to
 > make general claims about endometrial cancer.
 
-Full methods, parameter choices, and caveats: [`docs/analysis_notes.md`](docs/analysis_notes.md).
-
 ## Pipeline
 
 | Step | Script | What it does |
