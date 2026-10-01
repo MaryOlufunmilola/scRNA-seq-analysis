@@ -255,7 +255,6 @@ def _record_clustering_metadata(adata, args, stability_results, use_rep):
     adata.uns["clustering_params"] = {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "python_version": platform.python_version(),
-        #"scanpy_version": sc.__version__,  
         "scanpy_version": package_versions(["scanpy"])["scanpy"],
         "harmonypy_version": getattr(harmonypy, "__version__", "unknown"),
         "pca_input": "log-normalized HVG matrix, not scaled",
