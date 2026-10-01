@@ -43,7 +43,7 @@ DISSOCIATION_STRESS_GENES = {
     "NR4A1", "NR4A2", "NR4A3", "CD69", "GADD45B",
 }
 
-# Core cell-cycle genes, S and G2M phase (Tirosh et al., Science 2016) -- the same reference list
+# Core cell-cycle genes, S and G2M phase (Tirosh et al., Science 2016), the same reference list
 # underlying Seurat's CellCycleScoring and scanpy's sc.tl.score_genes_cell_cycle.
 CELL_CYCLE_GENES = {
     # S phase
@@ -292,8 +292,8 @@ def _is_mt_gene(gene_name):
 def discover_data_driven_markers(model, adata, le, loadings, pca_mean, X_expr, y_all, top_n_genes=15,
                                  exclude_confounders=True):
     """
-    Rank genes per cell type by mean signed gene-level IG attribution (see
-    the module docstring), excluding confounder genes, and annotate each
+    Rank genes per cell type by mean signed gene-level IG attribution,
+    excluding confounder genes, and annotate each
     candidate with classical DE statistics (Wilcoxon on all genes in
     adata.raw), an ambient-RNA heuristic, doublet-score correlation, and
     per-patient detection.
@@ -353,8 +353,7 @@ def discover_data_driven_markers(model, adata, le, loadings, pca_mean, X_expr, y
                 pct_out = float(row["pct_nz_reference"]) if "pct_nz_reference" in row else np.nan
 
             # Ambient-RNA heuristic: a gene specific to this class should be near
-            # silent in every other class. Informational only -- ambient
-            # composition is dataset-specific, so there is no fixed list.
+            # silent in every other class. 
             target_mean = per_class_means[class_idx][gi]
             others = [m[gi] for i, m in enumerate(per_class_means) if i != class_idx]
             min_other_mean = min(others) if others else 0.0
