@@ -32,7 +32,7 @@ RAW_DIR = os.path.join(DATA_DIR, "GSE203612_raw")
 GEO_TAR_URL = "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE203nnn/GSE203612/suppl/GSE203612_RAW.tar"
 GEO_TAR_PATH = os.path.join(DATA_DIR, "GSE203612_RAW.tar")
 
-# SHA-256 of the GEO archive these results were produced with. 
+# SHA-256 of the GEO archive these results were produced with.
 GEO_TAR_SHA256 = "5178ae0bea3f2d95f7155aaba149a7e332499cc166b0d6c0f9e913f3a4db3a4d"
 
 UCEC_GSM_IDS = {

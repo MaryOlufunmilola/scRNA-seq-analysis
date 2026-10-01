@@ -4,7 +4,7 @@ Cell-type annotation for endometrial tumor tissue.
 Primary method: a marker-gene panel. Each marker's per-cluster mean (all genes,
 adata.raw) is z-scored across clusters; a type's score is the mean z-score of its
 markers. A cluster is "Ambiguous" when the best score is not positive or is within
-min_margin of the runner-up. 
+min_margin of the runner-up.
 
 CellTypist (immune-only models) is a consistency check on immune clusters only.
 """

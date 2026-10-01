@@ -353,7 +353,7 @@ def discover_data_driven_markers(model, adata, le, loadings, pca_mean, X_expr, y
                 pct_out = float(row["pct_nz_reference"]) if "pct_nz_reference" in row else np.nan
 
             # Ambient-RNA heuristic: a gene specific to this class should be near
-            # silent in every other class. 
+            # silent in every other class.
             target_mean = per_class_means[class_idx][gi]
             others = [m[gi] for i, m in enumerate(per_class_means) if i != class_idx]
             min_other_mean = min(others) if others else 0.0
