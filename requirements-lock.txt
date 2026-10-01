@@ -1,6 +1,6 @@
 # Exact package versions that produced the results in README.md.
 #
-# Generated with `pip freeze` from the author's environment:
+# Generated with `pip freeze` from the environment:
 #   macOS (Apple Silicon), Python 3.11.16, conda env "scrna".
 # Includes the Jupyter packages used for notebooks/analysis.ipynb.
 #
@@ -11,7 +11,7 @@
 # requirements.txt keeps loose version ranges for everyday installs; this
 # file is the record of what the reported numbers were computed with.
 # Omitted from the freeze: `packaging`, which conda installed from a local
-# build path that pip cannot reinstall -- pip resolves it as a dependency.
+# build path that pip cannot reinstall.
 # On Linux, install CPU-only torch first to avoid the ~2 GB CUDA build:
 #   pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
 
