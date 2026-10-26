@@ -229,3 +229,49 @@ def test_record_preprocess_params_writes_settings_and_checksum(synthetic_adata):
     assert saved["n_cells_after_qc"] == synthetic_adata.n_obs
     assert "scanpy" in saved["software"]
     assert synthetic_adata.uns["preprocess_params"]["n_libraries"] == 3
+
+
+def _write_toy_library(directory, stem, n_genes=30, n_cells=12):
+    rng = np.random.default_rng(1)
+    counts = rng.poisson(2, size=(n_genes, n_cells)).astype(np.int32)  # genes x cells, as in 10x files
+    import scipy.io
+    import scipy.sparse as sp
+    with gzip.open(directory / f"{stem}_gene_expression.mtx.gz", "wb") as f:
+        scipy.io.mmwrite(f, sp.coo_matrix(counts), field="integer")
+    genes = pd.DataFrame({"id": [f"ENSG{i}" for i in range(n_genes)], "symbol": [f"G{i}" for i in range(n_genes)]})
+    genes.to_csv(directory / f"{stem}_genes.tsv.gz", sep="\t", header=False, index=False, compression="gzip")
+
+
+def test_sample_id_from_filename_uses_prefix_before_first_underscore():
+    assert preprocess.sample_id_from_filename("/x/TOYP2_lib1_gene_expression.mtx.gz") == "TOYP2"
+
+
+def test_load_data_with_raw_dir_reads_local_libraries_without_download(tmp_path, monkeypatch):
+    def _no_download():
+        raise AssertionError("download_geo_data must not be called when raw_dir is given")
+    monkeypatch.setattr(preprocess, "download_geo_data", _no_download)
+
+    _write_toy_library(tmp_path, "PA_lib1")
+    _write_toy_library(tmp_path, "PA_lib2")
+    _write_toy_library(tmp_path, "PB_lib1")
+
+    adata = preprocess.load_data(raw_dir=str(tmp_path))
+
+    assert adata.n_obs == 36 and adata.n_vars == 30
+    assert sorted(adata.obs["sample_id"].unique()) == ["PA", "PB"]
+    assert preprocess.count_libraries(adata.obs) == 3
+    assert "PA_lib2_cell0" in adata.obs_names
+
+
+def test_load_data_with_empty_raw_dir_raises(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        preprocess.load_data(raw_dir=str(tmp_path))
+
+
+def test_record_preprocess_params_local_input_has_no_none_values(synthetic_adata):
+    args = argparse.Namespace(min_genes=100, max_genes=6000, max_pct_mt=15, doublet_rate=0.06,
+                              keep_predicted_doublets=False, raw_dir="example/toy_data")
+    params = preprocess.record_preprocess_params(synthetic_adata, args, {}, n_loaded=10, n_libraries=2,
+                                                 archive_sha256=None)
+    assert params["input_source"] == "local: example/toy_data"
+    assert all(v is not None for v in params.values())  # .h5ad cannot store None in uns

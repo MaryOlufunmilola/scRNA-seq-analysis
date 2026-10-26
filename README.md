@@ -1,31 +1,24 @@
-# Single-Cell RNA-Seq Analysis: Endometrial Cancer (GSE203612)
+# Single Cell RNA-seq Analysis: Endometrial Cancer (GSE203612)
 
 [![CI](https://github.com/MaryOlufunmilola/scRNA-seq-analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/MaryOlufunmilola/scRNA-seq-analysis/actions/workflows/ci.yml)
 
-An end-to-end, tested single-cell RNA-seq pipeline on three public human
-**uterine corpus endometrial carcinoma (UCEC)** tumors
-([GSE203612](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE203612),
-Barkley et al., *Nature Genetics* 2022): QC and doublet detection,
-multi-patient integration, clustering, tumor-compartment annotation,
-cross-patient label transfer with a neural network, and exploratory
-signature-matrix export and cell-cell communication.
+A single cell RNA-seq pipeline run on three public human uterine corpus endometrial
+carcinoma (UCEC) tumors from
+[GSE203612](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE203612)
+(Barkley et al., *Nature Genetics* 2022). It covers QC and doublet detection,
+integration across patients, clustering, annotation, and a neural network classifier
+that is tested on a patient it was not trained on. Two exploratory steps export a
+signature matrix for bulk deconvolution and infer cell to cell communication.
+
+I built it to work through a full single cell analysis on public data with the checks
+I would want before trusting the results: tested code, a toy dataset with a known
+answer, and validation on held out patients rather than a random split.
 
 ![UMAP of annotated cell types](docs/figures/umap_annotation.png)
 
-> **Scope:** three patients, six libraries, 8,000 cells after QC. Enough to
-> build and test the pipeline and map these tumors' cell populations, not to
-> make general claims about endometrial cancer.
-
-## Pipeline
-
-| Step | Script | What it does |
-|---|---|---|
-| 1 | `preprocess.py` | Download and checksum-verify GEO data; QC (min 100 genes, max 15% mito); per-library Scrublet doublets; normalization; HVG selection |
-| 2 | `clustering.py` | PCA, Harmony integration across patients, Leiden clustering, UMAP, subsampling stability (ARI), composition tables |
-| 3 | `annotate.py` | Marker-panel annotation (epithelial, stromal, endothelial, immune), with CellTypist as an immune-only cross-check and a cluster-level doublet test |
-| 4 | `machine_learning.py` | PyTorch classifier on train-only PCA; leave-one-patient-out evaluation; Integrated Gradients gene attributions |
-| 5 | `export_signature_matrix.py` | Linear-scale cell-type reference for bulk deconvolution (e.g., TCGA-UCEC) |
-| 6 | `cell_communication.py` | Exploratory ligand-receptor inference (liana-py, CellChat method) on all genes |
+The data are small: three patients, six libraries, and 8,000 cells after QC. That is
+enough to build and test the pipeline and describe these tumors, not to make general
+claims about endometrial cancer.
 
 ## Quick start
 
@@ -34,47 +27,98 @@ git clone https://github.com/MaryOlufunmilola/scRNA-seq-analysis.git
 cd scRNA-seq-analysis
 pip install -r requirements.txt          # or requirements-lock.txt to reproduce exactly
 
-bash run_pipeline.sh                      # tests + steps 1-4, logs in logs/
-bash run_pipeline.sh --all                # also steps 5-6
+bash run_pipeline.sh                      # tests + steps 1 to 4, logs in logs/
+bash run_pipeline.sh --all                # also steps 5 and 6
 ```
 
-Then open `notebooks/analysis.ipynb` to explore the outputs.
+Step 1 downloads the GEO archive on the first run and reuses it afterwards. Then open
+`notebooks/analysis.ipynb` to look through the outputs.
 
-## Key results
+To check the pipeline without downloading anything, run the toy example:
 
-**Cell types:** T/NK cell (3,073), epithelial (2,514), myeloid/monocyte (960),
-neutrophil (700), B cell (395), stromal (192), plasma cell (154), plus one
-12-cell doublet cluster caught by the cluster-level test.
+```bash
+bash example/run_example.sh
+```
 
-**Cross-patient label transfer** (train on two patients, predict the third):
+It generates a small synthetic dataset with five planted cell types, runs steps 1 to 4,
+and fails if QC misses the planted empty or damaged barcodes, if any cell type is
+recovered below 90%, or if accuracy on a held out patient falls below 0.85. CI runs it
+on every push. The same mechanism works for your own data: name the files as in the
+input row below and run `python scripts/preprocess.py --raw-dir path/to/folder`.
 
-| Held-out patient | Accuracy | Macro-F1 |
+## Results
+
+After QC there are 3,073 T/NK cells, 2,514 epithelial cells, 960 myeloid/monocyte
+cells, 700 neutrophils, 395 B cells, 192 stromal cells, and 154 plasma cells, plus one
+12-cell cluster flagged as doublets by a test at the cluster level.
+
+Training the classifier on two patients and predicting the third:
+
+| Held out patient | Accuracy | Macro F1 |
 |---|---|---|
 | NYU_UCEC1 | 0.90 | 0.79 |
 | NYU_UCEC2 | 0.95 | 0.78 |
 | NYU_UCEC3 | 0.97 | 0.94 |
 
-The macro-F1 gap comes almost entirely from plasma cells, 93% of which are
-from one patient; excluding them, macro-F1 is 0.91–0.94. This measures
-label-transfer consistency within the dataset, not independent validation.
+A random split of cells gives 0.97 accuracy, which looks better than it is. Holding out
+whole patients showed that the macro F1 gap comes almost entirely from plasma cells:
+93% of them come from one patient, so when that patient is held out the model has
+barely seen any. Without plasma cells, macro F1 is 0.91 to 0.94. With three patients,
+this is a stress test of label transfer within one dataset, not independent validation.
 
-**Highlights**
-- The classifier's top epithelial gene is **WFDC2 (HE4)**, a known
-  endometrial cancer marker absent from the curated panel.
-- CellTypist and the marker panel agree on 8 of 10 immune clusters; both
-  disagreements were resolved by expression evidence (a doublet cluster and
-  a neutrophil cluster).
-- Clustering is moderately stable (mean ARI 0.74 over subsamples).
+A few other things worth noting:
 
-## Testing and reproducibility
+- The classifier's top epithelial gene is WFDC2 (HE4), a known endometrial cancer
+  marker that is not in the curated marker panel.
+- CellTypist and the marker panel agree on 8 of 10 immune clusters. The two
+  disagreements turned out to be a doublet cluster and a neutrophil cluster once I
+  looked at the marker expression.
+- Clustering is moderately stable: mean ARI 0.74 when the clustering is rerun on
+  subsamples.
 
-- **84 unit tests** on synthetic data (pytest; Scrublet, CellTypist, and
-  Harmony stubbed), covering data-leakage guards, Integrated Gradients
-  properties, linear-scale signature averaging, and safe archive extraction.
-  CI runs `pytest` and `ruff` on Python 3.10 and 3.11.
-- Pinned SHA-256 checksums for the GEO archive and CellTypist model;
-  parameters and package versions recorded with every run; exact versions in
-  `requirements-lock.txt`.
+## Pipeline
+
+| Step | Script | What it does |
+|---|---|---|
+| 1 | `preprocess.py` | Download GEO data and verify checksums; QC (at least 100 genes, at most 15% mitochondrial); Scrublet doublets per library; normalization; HVG selection |
+| 2 | `clustering.py` | PCA, Harmony integration across patients, Leiden clustering, UMAP, subsampling stability (ARI), composition tables |
+| 3 | `annotate.py` | Annotation from a marker panel (epithelial, stromal, endothelial, immune), with CellTypist as a cross check on immune cells and a doublet test at the cluster level |
+| 4 | `machine_learning.py` | PyTorch classifier on PCA fitted to training cells only; leave one patient out evaluation; Integrated Gradients gene attributions |
+| 5 | `export_signature_matrix.py` | Cell type reference on a linear scale for bulk deconvolution (e.g., TCGA-UCEC) |
+| 6 | `cell_communication.py` | Exploratory ligand and receptor inference (liana-py, CellChat method) on all genes |
+
+## Inputs and outputs
+
+Input is the three GSE203612 tumors (downloaded and checked against pinned checksums
+by step 1), or your own libraries with `--raw-dir`. Each library is a pair of files:
+`<sample>_<libN>_gene_expression.mtx.gz` (Matrix Market counts, genes × cells) and
+`<sample>_<libN>_genes.tsv.gz` (Ensembl ID, gene symbol).
+
+| Output | Files |
+|---|---|
+| Annotated cells | `data/annotated_data.h5ad` (raw counts in `layers["counts"]`, `obs["cell_type"]`, `obs["leiden_clusters"]`, UMAP) |
+| QC summary | `results/qc_cell_counts_by_stage.csv`, `results/figures/qc_*.png` |
+| Cluster labels and confidence | `results/marker_annotation_confidence.csv`, `results/figures/umap_annotation.png` |
+| Classifier | `results/leave_one_patient_out.csv`, `models/cell_type_predictor.pth` |
+| Run record | `results/preprocess_params.json`, `results/run_metadata.json` (settings, checksums, package versions) |
+| With `--all` | `results/cell_type_signature_matrix.csv`, `results/cell_communication_results.csv` |
+
+## Run time
+
+On a MacBook Pro (CPU only), steps 1 to 4 take about a minute and peak at 1.5 GB of
+memory, plus about 25 seconds for the test suite. That excludes the first GEO download.
+The toy example takes about 40 seconds. `run_pipeline.sh` writes each step's time and
+peak memory to `logs/timing.tsv`. Inputs are about 15 MB of raw counts for the six
+libraries.
+
+## Tests
+
+88 unit tests on synthetic data, with Scrublet, CellTypist, and Harmony stubbed out.
+They cover guards against data leakage, Integrated Gradients properties, averaging the
+signature matrix on a linear scale, and safe archive extraction. CI runs `pytest` and
+`ruff` on Python 3.10 and 3.11, plus the toy example. The GEO archive and CellTypist
+model have pinned SHA-256 checksums, every run records its parameters and package
+versions, and `requirements-lock.txt` has exact versions.
 
 ```bash
 pip install -r requirements-dev.txt
@@ -84,18 +128,18 @@ ruff check .
 
 ## Limitations
 
-Three patients, with several populations concentrated in one; T vs. NK and
-fibroblast vs. pericyte not separable at this depth (reported as "T/NK cell"
-and "Stromal cell"); no ambient-RNA correction; malignant vs. normal
-epithelium not distinguished; cell-cell communication p-values permute cells,
-not patients.
+Three patients, with several cell populations concentrated in one. T and NK cells, and
+fibroblasts and pericytes, cannot be separated at this depth, so they are reported as
+"T/NK cell" and "Stromal cell". There is no ambient RNA correction, malignant and normal
+epithelium are not distinguished, and the cell to cell communication p-values permute
+cells, not patients.
 
 ## Data source
 
-Barkley D, Moncada R, Pour M, et al. "Cancer cell states recur across tumor
-types and form specific interactions with the tumor microenvironment."
-*Nature Genetics* 2022. Samples: GSM6177620–GSM6177622 (NYU_UCEC1–3).
+Barkley D, Moncada R, Pour M, et al. "Cancer cell states recur across tumor types and
+form specific interactions with the tumor microenvironment." *Nature Genetics* 2022.
+Samples GSM6177620 to GSM6177622 (NYU_UCEC1, NYU_UCEC2, NYU_UCEC3).
 
 ## License
 
-MIT see `LICENSE`.
+MIT; see `LICENSE`.

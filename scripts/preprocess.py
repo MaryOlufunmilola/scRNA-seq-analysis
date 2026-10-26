@@ -189,7 +189,36 @@ def _load_library(mtx_path, sample_id, library_id):
     return adata
 
 
-def load_data():
+def sample_id_from_filename(mtx_path):
+    """Patient/sample ID for local input: the file name up to the first underscore."""
+    return os.path.basename(mtx_path).split("_")[0]
+
+
+def load_local_data(raw_dir):
+    """
+    Load every '<sample>_<...>_gene_expression.mtx.gz' (+ matching '_genes.tsv.gz')
+    in raw_dir, skipping the GEO download. Used by the toy example and for
+    running the pipeline on your own 10x-style libraries.
+    """
+    mtx_files = sorted(glob.glob(os.path.join(raw_dir, "*_gene_expression.mtx.gz")))
+    if not mtx_files:
+        raise FileNotFoundError(f"No '*_gene_expression.mtx.gz' files found in {raw_dir}.")
+    adatas = []
+    for mtx_path in mtx_files:
+        sample_id = sample_id_from_filename(mtx_path)
+        library_id = _library_id_from_filename(mtx_path)
+        print(f"Loading {sample_id} / {library_id} from {os.path.basename(mtx_path)} ...")
+        adatas.append(_load_library(mtx_path, sample_id, library_id))
+    adata = ad.concat(adatas, join="outer", fill_value=0)
+    adata.var_names_make_unique()
+    adata.obs_names_make_unique()
+    return adata
+
+
+def load_data(raw_dir=None):
+    if raw_dir is not None:
+        return load_local_data(raw_dir)
+
     archive_sha256 = download_geo_data()
 
     adatas = []
@@ -377,10 +406,13 @@ def record_preprocess_params(adata, args, overrides, n_loaded, n_libraries, arch
     Store the input archive checksum, QC settings, and software versions in
     adata.uns["preprocess_params"] and results/preprocess_params.json.
     """
+    raw_dir = getattr(args, "raw_dir", None)
     params = {
-        "geo_archive_url": GEO_TAR_URL,
-        "geo_archive_sha256": archive_sha256,
-        "gsm_ids": dict(UCEC_GSM_IDS),
+        "input_source": f"local: {raw_dir}" if raw_dir else "GEO GSE203612",
+        # Strings rather than None: .h5ad cannot store None values in adata.uns.
+        "geo_archive_url": "not used (local input)" if raw_dir else GEO_TAR_URL,
+        "geo_archive_sha256": "not applicable (local input)" if raw_dir else archive_sha256,
+        "gsm_ids": "not applicable (local input)" if raw_dir else dict(UCEC_GSM_IDS),
         "n_libraries": int(n_libraries),
         "n_cells_loaded": int(n_loaded),
         "n_cells_after_qc": int(adata.n_obs),
@@ -432,6 +464,10 @@ def main():
                               "predicted_doublet/doublet_score columns) instead of removing them. "
                               "Scrublet's call is a probabilistic estimate, not a definitive label; "
                               "use this to treat it as soft evidence downstream instead.")
+    parser.add_argument("--raw-dir", type=str, default=None,
+                         help="Load local 10x-style libraries from this folder instead of downloading GSE203612. "
+                              "Expects '<sample>_<libN>_gene_expression.mtx.gz' plus '<sample>_<libN>_genes.tsv.gz'; "
+                              "the sample ID is the file name up to the first underscore (see example/).")
     args = parser.parse_args()
 
     overrides = {}
@@ -440,8 +476,11 @@ def main():
             sample, rate = pair.split("=")
             overrides[sample.strip()] = float(rate)
 
-    print("Loading GSE203612 endometrial (UCEC) tumor samples...")
-    adata = load_data()
+    if args.raw_dir:
+        print(f"Loading local libraries from {args.raw_dir} (GEO download skipped)...")
+    else:
+        print("Loading GSE203612 endometrial (UCEC) tumor samples...")
+    adata = load_data(raw_dir=args.raw_dir)
     n_libraries = count_libraries(adata.obs)
     n_loaded = int(adata.n_obs)
     archive_sha256 = adata.uns.get("geo_archive_sha256")  # captured now: concat in doublet detection drops .uns

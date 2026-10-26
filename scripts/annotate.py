@@ -9,6 +9,7 @@ min_margin of the runner-up.
 CellTypist (immune-only models) is a consistency check on immune clusters only.
 """
 
+import argparse
 import os
 import re
 import json
@@ -654,6 +655,12 @@ def plot_cluster_diagnostic(adata, results_dir=RESULTS_DIR):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Marker-panel cell-type annotation with a CellTypist cross-check.")
+    parser.add_argument("--skip-celltypist", action="store_true",
+                        help="Skip the CellTypist immune cross-check (no model download). Used by the toy example; "
+                             "the marker-panel labels, which become cell_type, are unaffected.")
+    args = parser.parse_args()
+
     input_file = "data/processed_data.h5ad"
     print(f"Loading {input_file}...")
     adata = sc.read(input_file)
@@ -671,10 +678,13 @@ def main():
     print("\nChecking individual-cell agreement within each cluster (heterogeneity check)...")
     compute_cluster_concordance(adata, marker_gene_list=list(MARKER_GENES.keys()))
 
-    print("\nRunning CellTypist on all genes (only prediction columns are merged back)...")
-    adata = run_celltypist(adata)
-
-    cross_check_immune_cells(adata)
+    if args.skip_celltypist:
+        print("\nSkipping CellTypist cross-check (--skip-celltypist).")
+        adata.uns["celltypist_model_info"] = {"name": "skipped (--skip-celltypist)"}
+    else:
+        print("\nRunning CellTypist on all genes (only prediction columns are merged back)...")
+        adata = run_celltypist(adata)
+        cross_check_immune_cells(adata)
 
     print("\nTesting each cluster for elevated Scrublet doublet scores...")
     doublet_table = flag_doublet_enriched_clusters(adata)
