@@ -10,10 +10,6 @@ integration across patients, clustering, annotation, and a neural network classi
 that is tested on a patient it was not trained on. Two exploratory steps export a
 signature matrix for bulk deconvolution and infer cell to cell communication.
 
-I built it to work through a full single cell analysis on public data with the checks
-I would want before trusting the results: tested code, a toy dataset with a known
-answer, and validation on held out patients rather than a random split.
-
 ![UMAP of annotated cell types](docs/figures/umap_annotation.png)
 
 The data are small: three patients, six libraries, and 8,000 cells after QC. That is
