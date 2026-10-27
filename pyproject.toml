@@ -3,13 +3,11 @@ line-length = 110
 target-version = "py310"
 
 [tool.ruff.lint]
-# Start with a focused, high-signal rule set rather than every possible
-# check, catches real bugs (unused imports, undefined names) without
-# drowning CI output in style nitpicks on day one.
+# pycodestyle errors and warnings plus pyflakes (unused imports, undefined names).
 select = ["E", "F", "W"]
 ignore = [
     "E501",  # line length is already covered by line-length above; don't double-flag
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"notebooks/*" = ["F401"]  # notebooks often import things for display/exploration
+"notebooks/*" = ["F401"]  # notebooks import things for display

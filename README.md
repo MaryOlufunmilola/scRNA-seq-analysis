@@ -7,8 +7,9 @@ carcinoma (UCEC) tumors from
 [GSE203612](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE203612)
 (Barkley et al., *Nature Genetics* 2022). It covers QC and doublet detection,
 integration across patients, clustering, annotation, and a neural network classifier
-that is tested on a patient it was not trained on. Two exploratory steps export a
-signature matrix for bulk deconvolution and infer cell to cell communication.
+that is tested on a patient it was not trained on. Two optional steps, both
+exploratory, export a signature matrix for bulk deconvolution and infer cell to cell
+communication.
 
 ![UMAP of annotated cell types](docs/figures/umap_annotation.png)
 
@@ -27,8 +28,9 @@ bash run_pipeline.sh                      # tests + steps 1 to 4, logs in logs/
 bash run_pipeline.sh --all                # also steps 5 and 6
 ```
 
-Step 1 downloads the GEO archive on the first run and reuses it afterwards. Then open
-`notebooks/analysis.ipynb` to look through the outputs.
+Step 1 downloads the GEO archive on the first run and reuses it afterwards. To look
+through the outputs, install Jupyter (`pip install jupyterlab`) and open
+`notebooks/analysis.ipynb`.
 
 To check the pipeline without downloading anything, run the toy example:
 
@@ -48,6 +50,33 @@ After QC there are 3,073 T/NK cells, 2,514 epithelial cells, 960 myeloid/monocyt
 cells, 700 neutrophils, 395 B cells, 192 stromal cells, and 154 plasma cells, plus one
 12-cell cluster flagged as doublets by a test at the cluster level.
 
+### Annotation evidence
+
+Each of the 16 Leiden clusters is labeled from a panel of 31 marker genes for 9 cell
+types (all 31 are present in the data). Evidence for each label is saved in `results/`:
+
+| Check | What it shows | Result |
+|---|---|---|
+| Score margin (`marker_annotation_confidence.csv`) | How far the winning cell type scores above the runner up | 0.68 to 3.0 for the immune, stromal, and main epithelial clusters |
+| Threshold sensitivity (`min_margin_sensitivity.csv`) | Whether labels change as the margin threshold moves from 0.05 to 0.30 | No label changes except the 12-cell doublet cluster |
+| Per cell agreement (`cluster_annotation_concordance.csv`) | Fraction of cells that get the cluster's label when scored one at a time | 41% to 88% in those clusters; the rest split between ambiguous and another type, which is common with sparse counts per cell |
+| CellTypist (`annotation_cross_check_immune_only.csv`) | An independent reference model, run on immune clusters only | Agrees on 8 of 10 |
+| Doublet test (`cluster_doublet_enrichment.csv`) | Clusters with higher Scrublet scores than the rest | One cluster (12 cells) flagged and excluded from the classifier |
+
+The two CellTypist disagreements are the doublet cluster and a cluster CellTypist calls
+classical monocytes; the marker panel scores it clearly as neutrophils (margin 2.7).
+The classifier's top epithelial gene is WFDC2 (HE4), a known endometrial cancer marker
+that is not in the panel.
+
+The weakest labels are four epithelial clusters (2, 5, 6, and 15; 1,336 of the 2,514
+epithelial cells). Fewer than 10% of their cells express the epithelial markers, and
+under a quarter get the epithelial label when scored one at a time. They are labeled
+epithelial mainly because every other cell type scores below average there. They may
+be tumor cells with low marker detection or lower quality cells; this analysis does not
+separate the two, so counts for epithelial cells should be read with that in mind.
+
+### Label transfer across patients
+
 Training the classifier on two patients and predicting the third:
 
 | Held out patient | Accuracy | Macro F1 |
@@ -59,18 +88,29 @@ Training the classifier on two patients and predicting the third:
 A random split of cells gives 0.97 accuracy, which looks better than it is. Holding out
 whole patients showed that the macro F1 gap comes almost entirely from plasma cells:
 93% of them come from one patient, so when that patient is held out the model has
-barely seen any. Without plasma cells, macro F1 is 0.91 to 0.94. With three patients,
-this is a stress test of label transfer within one dataset, not independent validation.
+barely seen any. Without plasma cells, macro F1 is 0.91 to 0.94.
 
-A few other things worth noting:
+What this test does and does not show: the labels for every cell, including the held
+out patient's, come from one joint analysis of all three patients (Harmony
+integration, clustering, and marker annotation), and the genes the classifier uses were
+selected on all cells. Only the PCA and the classifier are fit without the held out
+patient. So the test measures whether the classifier can reproduce the joint
+analysis's labels on a patient it was not trained on. It does not validate the
+annotation pipeline itself, and with three patients from one study it is not
+independent validation. Doing that would need a separate dataset annotated on its own.
 
-- The classifier's top epithelial gene is WFDC2 (HE4), a known endometrial cancer
-  marker that is not in the curated marker panel.
-- CellTypist and the marker panel agree on 8 of 10 immune clusters. The two
-  disagreements turned out to be a doublet cluster and a neutrophil cluster once I
-  looked at the marker expression.
-- Clustering is moderately stable: mean ARI 0.74 when the clustering is rerun on
-  subsamples.
+Clustering is moderately stable: mean ARI 0.74 when the clustering is rerun on
+subsamples.
+
+### Exploratory steps
+
+Steps 5 and 6 run only with `--all`, and I treat their outputs as exploratory. The
+signature matrix averages each cell type over three patients, so it reflects these
+tumors rather than endometrial cancer in general; check it against a larger reference
+before using it to deconvolve bulk data. The cell to cell communication p-values
+permute cells, not patients, so they overstate confidence, and with three patients a
+ligand and receptor pair seen in one tumor can dominate. Use them to pick hypotheses to
+test, not as findings.
 
 ## Pipeline
 
@@ -80,8 +120,8 @@ A few other things worth noting:
 | 2 | `clustering.py` | PCA, Harmony integration across patients, Leiden clustering, UMAP, subsampling stability (ARI), composition tables |
 | 3 | `annotate.py` | Annotation from a marker panel (epithelial, stromal, endothelial, immune), with CellTypist as a cross check on immune cells and a doublet test at the cluster level |
 | 4 | `machine_learning.py` | PyTorch classifier on PCA fitted to training cells only; leave one patient out evaluation; Integrated Gradients gene attributions |
-| 5 | `export_signature_matrix.py` | Cell type reference on a linear scale for bulk deconvolution (e.g., TCGA-UCEC) |
-| 6 | `cell_communication.py` | Exploratory ligand and receptor inference (liana-py, CellChat method) on all genes |
+| 5 | `export_signature_matrix.py` | Exploratory: cell type reference on a linear scale for bulk deconvolution (e.g., TCGA-UCEC) |
+| 6 | `cell_communication.py` | Exploratory: ligand and receptor inference (liana-py, CellChat method) on all genes |
 
 ## Inputs and outputs
 
@@ -97,7 +137,7 @@ by step 1), or your own libraries with `--raw-dir`. Each library is a pair of fi
 | Cluster labels and confidence | `results/marker_annotation_confidence.csv`, `results/figures/umap_annotation.png` |
 | Classifier | `results/leave_one_patient_out.csv`, `models/cell_type_predictor.pth` |
 | Run record | `results/preprocess_params.json`, `results/run_metadata.json` (settings, checksums, package versions) |
-| With `--all` | `results/cell_type_signature_matrix.csv`, `results/cell_communication_results.csv` |
+| With `--all` (exploratory) | `results/cell_type_signature_matrix.csv`, `results/cell_communication_results.csv` |
 
 ## Run time
 
@@ -124,11 +164,14 @@ ruff check .
 
 ## Limitations
 
-Three patients, with several cell populations concentrated in one. T and NK cells, and
-fibroblasts and pericytes, cannot be separated at this depth, so they are reported as
-"T/NK cell" and "Stromal cell". There is no ambient RNA correction, malignant and normal
-epithelium are not distinguished, and the cell to cell communication p-values permute
-cells, not patients.
+Three patients from one study, with several cell populations concentrated in one. The
+classifier results are label transfer within this dataset, not independent validation
+of the annotation, and the signature matrix and cell to cell communication results are
+exploratory (see Results). T and NK cells, and fibroblasts and pericytes, cannot be
+separated at this depth, so they are reported as "T/NK cell" and "Stromal cell". Four
+epithelial clusters have weak marker support. There is no ambient RNA correction, and
+malignant and normal epithelium are not distinguished. The next step is to apply the
+pipeline to a larger, independently annotated endometrial dataset.
 
 ## Data source
 
